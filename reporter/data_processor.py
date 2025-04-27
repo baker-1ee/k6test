@@ -31,7 +31,7 @@ def process_data(df):
     }
 
     # HTTP Request Duration 요약
-    summary_iteration_duration = analyzer.calculate_durations_summary(df, 'http_req_duration')
+    summary_http_req_duration = analyzer.calculate_durations_summary(df, 'http_req_duration')
 
     # Iteration Duration 요약
     summary_iteration_duration = analyzer.calculate_durations_summary(df, 'iteration_duration')
@@ -56,6 +56,7 @@ def process_data(df):
     return {
         "test_duration": test_duration,
         "summary_http_request": summary_http_request,
+        "summary_http_req_duration": summary_http_req_duration,
         "summary_iteration_duration": summary_iteration_duration,
         "summary_network_usage": summary_network_usage,
         "chart_vus_timeseries": chart_vus_timeseries,

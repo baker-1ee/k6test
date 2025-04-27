@@ -20,23 +20,18 @@ def calculate_counts_summary(df: pd.DataFrame, metric_name: str, duration_sec: i
         "tps": tps
     }
 
-def calculate_durations_summary(df: pd.DataFrame, metric: str) -> pd.DataFrame:
+def calculate_durations_summary(df: pd.DataFrame, metric: str) -> dict:
     """
-    특정 metric_name 에 대해 전체 기준 통계 분석 (group 없이 전체 집계)
+    주어진 metric_name 에 대해 avg, min, max, p50, p90, p95, p99 값을 계산 해서 dict 로 반환
     """
     df_filtered = df[df["metric_name"] == metric]
 
     if df_filtered.empty:
         print(f"[WARN] No data for metric: {metric}")
-        return pd.DataFrame(columns=[
-            "metric", "count", "avg", "min", "max", "p50", "p90", "p95", "p99"
-        ])
+        return {}
 
     values = df_filtered["metric_value"]
-
-    summary = {
-        "metric": metric,
-        "count": len(values),
+    return {
         "avg": values.mean(),
         "min": values.min(),
         "max": values.max(),
@@ -45,8 +40,6 @@ def calculate_durations_summary(df: pd.DataFrame, metric: str) -> pd.DataFrame:
         "p95": np.percentile(values, 95),
         "p99": np.percentile(values, 99),
     }
-
-    return pd.DataFrame([summary])
 
 
 def calculate_durations(df: pd.DataFrame, metric: str) -> pd.DataFrame:
