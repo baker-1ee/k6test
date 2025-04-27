@@ -109,10 +109,9 @@ def generate_time_binned_latency_summary(df: pd.DataFrame, interval_sec: int = 5
         .rename(columns={"bucket": "timestamp"})
     )
 
-
 def generate_latency_detail_summary(df: pd.DataFrame) -> pd.DataFrame:
     """
-    URL 별로 전체 요청수, 성공수, 실패수, 성공률, avg, min, max, p50, p90, p95, p99 통계를 계산 해서 반환
+    URL 별로 전체 요청수, 성공수, 실패수, 성공률, avg, min, max, p50, p90, p95, p99, errors 통계를 계산해서 반환
     """
     if df.empty:
         return pd.DataFrame()
@@ -137,20 +136,39 @@ def generate_latency_detail_summary(df: pd.DataFrame) -> pd.DataFrame:
         p99=lambda x: np.percentile(x, 99),
     ).reset_index()
 
-    # 4. 합치기
-    result = total_reqs.merge(failed_reqs, on="url", how="left").merge(latency_summary, on="url", how="left")
+    # 4. URL별 errors 요약 추가
+    df_errors = df[(df["metric_name"] == "http_req_failed") & (df["error"].notna())]
+    if not df_errors.empty:
+        error_summary = (
+            df_errors
+            .groupby("url")["error"]
+            .apply(lambda x: ", ".join(f"{err}({cnt})" for err, cnt in x.value_counts().items()))
+            .reset_index()
+            .rename(columns={"error": "errors"})
+        )
+    else:
+        error_summary = pd.DataFrame(columns=["url", "errors"])
+
+    # 5. 합치기
+    result = (
+        total_reqs
+        .merge(failed_reqs, on="url", how="left")
+        .merge(latency_summary, on="url", how="left")
+        .merge(error_summary, on="url", how="left")
+    )
+
     result["fail"] = result["fail"].fillna(0).astype(int)
     result["ok"] = result["total"] - result["fail"]
     result["ratio"] = result.apply(lambda row: format_ratio(row["ok"], row["total"]) if row["total"] > 0 else 0, axis=1)
     result = result.drop(columns=["ok"])
 
-    # 5. 숫자 포맷 정리
+    # 6. 숫자 포맷 정리
     latency_cols = ["avg", "min", "max", "p50", "p90", "p95", "p99"]
     result[latency_cols] = result[latency_cols].round(0).astype(int)
 
-    # 6. 열 순서 재정렬
-    result = result[["url", "total", "fail", "ratio", "avg", "min", "max", "p50", "p90", "p95", "p99"]]
-
+    # 7. 열 순서 재정렬
+    result = result[["url", "total", "fail", "ratio", "avg", "min", "max", "p50", "p90", "p95", "p99", "errors"]]
+    result["errors"] = result["errors"].fillna("-")
     return result
 
 
@@ -256,6 +274,25 @@ def calculate_failures_summary(df: pd.DataFrame) -> dict:
         "success_rate": success_rate,
         "errors": error_summary if error_summary else "-"
     }
+
+def generate_error_summary_by_url(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    http_req_failed 메트릭 기준 으로 URL 별 error summary 문자열 생성
+    """
+    df_failed = df[(df["metric_name"] == "http_req_failed") & (df["error"].notna())]
+
+    if df_failed.empty:
+        return pd.DataFrame(columns=["url", "errors"])
+
+    error_summary = (
+        df_failed
+        .groupby("url")["error"]
+        .apply(lambda x: ", ".join(f"{err}({cnt})" for err, cnt in x.value_counts().items()))
+        .reset_index()
+        .rename(columns={"error": "errors"})
+    )
+
+    return error_summary
 
 
 def calculate_failures(df: pd.DataFrame) -> pd.DataFrame:
