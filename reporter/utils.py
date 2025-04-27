@@ -69,9 +69,8 @@ def format_bytes(value: float) -> str:
 
 def format_ratio(success: int, total: int) -> float:
     if total == 0:
-        return 0
-    ratio = (success / total) * 100
-    return int(ratio) if ratio in (0, 100) else round(ratio, 1)
+        return 0.0
+    return round((success / total) * 100, 1)
 
 
 def determine_interval_seconds(duration_sec: int) -> int:

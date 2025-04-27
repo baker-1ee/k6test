@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from functools import reduce
 from typing import List
-from utils import format_duration, format_bytes
+from utils import format_duration, format_bytes, format_ratio
 
 def calculate_counts_summary(df: pd.DataFrame, metric_name: str, duration_sec: int) -> dict:
     """
@@ -141,14 +141,15 @@ def generate_latency_detail_summary(df: pd.DataFrame) -> pd.DataFrame:
     result = total_reqs.merge(failed_reqs, on="url", how="left").merge(latency_summary, on="url", how="left")
     result["fail"] = result["fail"].fillna(0).astype(int)
     result["ok"] = result["total"] - result["fail"]
-    result["ratio"] = result.apply(lambda row: round((row["ok"] / row["total"]) * 100, 1) if row["total"] > 0 else 0, axis=1)
+    result["ratio"] = result.apply(lambda row: format_ratio(row["ok"], row["total"]) if row["total"] > 0 else 0, axis=1)
+    result = result.drop(columns=["ok"])
 
     # 5. 숫자 포맷 정리
     latency_cols = ["avg", "min", "max", "p50", "p90", "p95", "p99"]
     result[latency_cols] = result[latency_cols].round(0).astype(int)
 
     # 6. 열 순서 재정렬
-    result = result[["url", "total", "ok", "fail", "ratio", "avg", "min", "max", "p50", "p90", "p95", "p99"]]
+    result = result[["url", "total", "fail", "ratio", "avg", "min", "max", "p50", "p90", "p95", "p99"]]
 
     return result
 
@@ -163,19 +164,20 @@ def generate_check_summary(df: pd.DataFrame) -> pd.DataFrame:
     checks_df = df[df["metric_name"] == "checks"]
 
     if checks_df.empty:
-        return pd.DataFrame(columns=["check", "total", "success", "fail"])
+        return pd.DataFrame(columns=["check", "total", "fail", "ratio"])
 
     result = (
         checks_df
         .groupby("check", as_index=False)
         .agg(
-            total=('metric_value', 'count'),   # 전체 체크 수
-            success=('metric_value', 'sum'),   # 성공(=1) 합
+            total=('metric_value', 'count'),
+            success=('metric_value', 'sum'),
         )
+        .assign(success=lambda x: x["success"].astype(int))
     )
-
     result["fail"] = result["total"] - result["success"]
-    result["ratio"] = (result["success"] / result["total"] * 100).round(1)
+    result["ratio"] = result.apply(lambda row: format_ratio(row["success"], row["total"]), axis=1)
+    result = result.drop(columns=["success"])
 
     # 정렬
     result = result.sort_values(by="check", ascending=True).reset_index(drop=True)
