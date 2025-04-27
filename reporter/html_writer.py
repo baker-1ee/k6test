@@ -39,17 +39,24 @@ def generate_error_card(errors_text: str) -> str:
     """
 
 def generate_detail_table(df, title="상세 테이블") -> str:
-    """
-    DataFrame 을 HTML 테이블 로 변환
-    """
     if df.empty:
         return f"<div class='card-full'><div class='card-title'>{title}</div><p>데이터 없음</p></div>"
 
     headers = ''.join(f"<th>{col}</th>" for col in df.columns)
     rows = ''
     for _, row in df.iterrows():
+        ratio = float(row.get("ratio", 100))  # ratio 컬럼 없을 수도 있으니까 기본값 100
+
+        if ratio == 100:
+            color = "green"
+        elif ratio < 100:
+            color = "orangered"
+        elif ratio <= 75:
+            color = "darkred"
+
+        # <tr style> 에 색상 적용
         row_html = ''.join(f"<td>{row[col]}</td>" for col in df.columns)
-        rows += f"<tr>{row_html}</tr>"
+        rows += f'<tr style="color: {color};">{row_html}</tr>'
 
     return f"""
     <div class="card-full">
