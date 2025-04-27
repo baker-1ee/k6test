@@ -45,16 +45,6 @@ def format_duration(ms: float) -> str:
         return f"{int(ms)}ms"
 
 
-def format_card_value(value):
-    """
-    카드에 표시할 값을 포맷.
-    숫자는 3자리 마다 콤마 추가, 그 외는 그대로 반환.
-    """
-    if isinstance(value, (int, float)):
-        return f"{value:,}"
-    return value
-
-
 def format_bytes(value: float) -> str:
     try:
         value = float(value)

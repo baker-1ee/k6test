@@ -1,5 +1,5 @@
 import pandas as pd
-from utils import format_test_duration_title, format_card_value
+from utils import format_test_duration_title
 
 def generate_card(title, data: dict, icon="📊") -> str:
     """
