@@ -108,6 +108,78 @@ def generate_time_binned_latency_summary(df: pd.DataFrame, interval_sec: int = 5
     )
 
 
+def generate_latency_detail_summary(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    URL 별로 전체 요청수, 성공수, 실패수, 성공률, avg, min, max, p50, p90, p95, p99 통계를 계산 해서 반환
+    """
+    if df.empty:
+        return pd.DataFrame()
+
+    # 1. 전체 요청수 (http_reqs)
+    df_reqs = df[df["metric_name"] == "http_reqs"]
+    total_reqs = df_reqs.groupby("url")["metric_value"].count().reset_index(name="total")
+
+    # 2. 실패 요청수 (http_req_failed, metric_value == 1 인 것)
+    df_failed = df[(df["metric_name"] == "http_req_failed") & (df["metric_value"] == 1)]
+    failed_reqs = df_failed.groupby("url")["metric_value"].count().reset_index(name="fail")
+
+    # 3. latency (http_req_duration)
+    df_latency = df[df["metric_name"] == "http_req_duration"]
+    latency_summary = df_latency.groupby("url")["metric_value"].agg(
+        avg="mean",
+        min="min",
+        max="max",
+        p50=lambda x: np.percentile(x, 50),
+        p90=lambda x: np.percentile(x, 90),
+        p95=lambda x: np.percentile(x, 95),
+        p99=lambda x: np.percentile(x, 99),
+    ).reset_index()
+
+    # 4. 합치기
+    result = total_reqs.merge(failed_reqs, on="url", how="left").merge(latency_summary, on="url", how="left")
+    result["fail"] = result["fail"].fillna(0).astype(int)
+    result["ok"] = result["total"] - result["fail"]
+    result["ratio"] = result.apply(lambda row: round((row["ok"] / row["total"]) * 100, 1) if row["total"] > 0 else 0, axis=1)
+
+    # 5. 숫자 포맷 정리
+    latency_cols = ["avg", "min", "max", "p50", "p90", "p95", "p99"]
+    result[latency_cols] = result[latency_cols].round(0).astype(int)
+
+    # 6. 열 순서 재정렬
+    result = result[["url", "total", "ok", "fail", "ratio", "avg", "min", "max", "p50", "p90", "p95", "p99"]]
+
+    return result
+
+
+def generate_check_summary(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    checks metric 에 대해 check 별로 total, success, fail 집계
+    """
+    if df.empty:
+        return pd.DataFrame()
+
+    checks_df = df[df["metric_name"] == "checks"]
+
+    if checks_df.empty:
+        return pd.DataFrame(columns=["check", "total", "success", "fail"])
+
+    result = (
+        checks_df
+        .groupby("check", as_index=False)
+        .agg(
+            total=('metric_value', 'count'),   # 전체 체크 수
+            success=('metric_value', 'sum'),   # 성공(=1) 합
+        )
+    )
+
+    result["fail"] = result["total"] - result["success"]
+    result["ratio"] = (result["success"] / result["total"] * 100).round(1)
+
+    # 정렬
+    result = result.sort_values(by="check", ascending=True).reset_index(drop=True)
+
+    return result
+
 
 def calculate_durations(df: pd.DataFrame, metric: str) -> pd.DataFrame:
     """

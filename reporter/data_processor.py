@@ -46,13 +46,11 @@ def process_data(df):
     # HTTP Request Latency 시계열 데이터
     chart_latency_timeseries = analyzer.generate_time_binned_latency_summary(df, interval_sec)
 
-    # 체크 결과 상세 테이블
-    detail_table = analyzer.generate_detail_table(df)
+    # URL 별 통계 테이블
+    detail_latency_table = analyzer.generate_latency_detail_summary(df)
 
-    # Detail 요약
-    df_req_duration = analyzer.calculate_durations(df, 'http_req_duration')
-    df_req_failures = analyzer.calculate_failures(df)
-    df_detail = analyzer.merge(df_req_duration, df_req_failures)
+    # checks 결과 요약
+    detail_check_table = analyzer.generate_check_summary(df)
 
     return {
         "test_duration": test_duration,
@@ -62,5 +60,6 @@ def process_data(df):
         "summary_network_usage": summary_network_usage,
         "chart_vus_timeseries": chart_vus_timeseries,
         "chart_latency_timeseries": chart_latency_timeseries,
-        "detail_table": df_detail,
+        "detail_table": detail_latency_table,
+        "detail_check_table": detail_check_table
     }
