@@ -42,6 +42,73 @@ def calculate_durations_summary(df: pd.DataFrame, metric: str) -> dict:
     }
 
 
+def calculate_total_transfer_summary(df: pd.DataFrame, duration_sec: int) -> dict:
+    """
+    data_sent, data_received 총량과 초당 전송량 요약을 dict 로 반환
+    """
+    total_received = df[df["metric_name"] == "data_received"]["metric_value"].sum()
+    total_sent = df[df["metric_name"] == "data_sent"]["metric_value"].sum()
+
+    received_per_sec = total_received / duration_sec if duration_sec > 0 else 0
+    sent_per_sec = total_sent / duration_sec if duration_sec > 0 else 0
+
+    return {
+        "data_received": {
+            "total": total_received,
+            "per_sec": received_per_sec,
+        },
+        "data_sent": {
+            "total": total_sent,
+            "per_sec": sent_per_sec,
+        }
+    }
+
+
+def generate_time_binned_vus_summary(df: pd.DataFrame, interval_sec: int = 5) -> pd.DataFrame:
+    """
+    timestamp 기준 interval_sec 간격 으로 VUs 시계열 샘플링
+    """
+    if df.empty:
+        return pd.DataFrame()
+
+    df_vus = df[df["metric_name"] == "vus"].copy()
+    df_vus["bucket"] = df_vus["timestamp"].dt.floor(f"{interval_sec}s")
+
+    return (
+        df_vus.sort_values("timestamp")
+        .groupby("bucket", as_index=False)
+        .first()[["bucket", "metric_value"]]
+        .rename(columns={"bucket": "timestamp", "metric_value": "vus"})
+    )
+
+
+def generate_time_binned_latency_summary(df: pd.DataFrame, interval_sec: int = 5) -> pd.DataFrame:
+    """
+    timestamp 기준 interval_sec 간격 으로 latency 통계 (avg, min, max, p50, p90, p95, p99) 생성
+    """
+    if df.empty:
+        return pd.DataFrame()
+
+    df_latency = df[df["metric_name"] == "http_req_duration"].copy()
+    df_latency["bucket"] = df_latency["timestamp"].dt.floor(f"{interval_sec}s")
+
+    return (
+        df_latency.groupby("bucket")["metric_value"]
+        .agg(
+            avg="mean",
+            min="min",
+            max="max",
+            p50=lambda x: np.percentile(x, 50),
+            p90=lambda x: np.percentile(x, 90),
+            p95=lambda x: np.percentile(x, 95),
+            p99=lambda x: np.percentile(x, 99),
+        )
+        .reset_index()
+        .rename(columns={"bucket": "timestamp"})
+    )
+
+
+
 def calculate_durations(df: pd.DataFrame, metric: str) -> pd.DataFrame:
     """
     특정 metric_name 에 대해 URL 별 통계 분석

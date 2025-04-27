@@ -37,13 +37,14 @@ def process_data(df):
     summary_iteration_duration = analyzer.calculate_durations_summary(df, 'iteration_duration')
 
     # Network Usage 요약
-    summary_network_usage = analyzer.calculate_total_transfer_summary(df)
+    summary_network_usage = analyzer.calculate_total_transfer_summary(df, test_duration["seconds"])
 
     # VU 시계열 데이터
-    chart_vus_timeseries = analyzer.generate_time_binned_vus_summary(df)
+    interval_sec = utils.determine_interval_seconds(test_duration["seconds"])
+    chart_vus_timeseries = analyzer.generate_time_binned_vus_summary(df, interval_sec)
 
     # HTTP Request Latency 시계열 데이터
-    chart_latency_timeseries = analyzer.generate_time_binned_latency_summary(df)
+    chart_latency_timeseries = analyzer.generate_time_binned_latency_summary(df, interval_sec)
 
     # 체크 결과 상세 테이블
     detail_table = analyzer.generate_detail_table(df)
