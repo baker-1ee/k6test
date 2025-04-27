@@ -28,6 +28,7 @@ def process_data(df):
         "vus_min": int(vus_min) if not pd.isna(vus_min) else 0,
         "vus_max": int(vus_max) if not pd.isna(vus_max) else 0,
     }
+    summary_http_request = {k: f"{v:,}" if isinstance(v, int) else v for k, v in summary_http_request.items()}
 
     # HTTP Request Error 요약
     summary_http_errors = http_req_failed.get("errors", "-")
