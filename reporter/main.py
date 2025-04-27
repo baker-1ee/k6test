@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 from datetime import datetime
 
@@ -26,14 +27,21 @@ def print_summary_to_console(data: dict):
 
 
 def main(input_path: str):
+    BASE_DIR = Path(__file__).resolve().parent
+    OUTPUT_DIR = BASE_DIR / "out"
+
     input_file = Path(input_path)
     if not input_file.exists():
         print(f"[ERROR] File not found: {input_file}")
         return
+
     timestamp = generate_timestamp()
     stem = input_file.stem  # 'stg_load_test'
-    html_output = Path("out") / f"{stem}_{timestamp}.html"
-    csv_output_dir = Path("out")
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    html_output = OUTPUT_DIR / f"{stem}_{timestamp}.html"
+    csv_output_dir = OUTPUT_DIR
 
     print(f"[INFO] Parsing CSV: {input_path}")
     df = parser.load_csv(input_path)
@@ -53,9 +61,9 @@ def main(input_path: str):
 
 
 if __name__ == "__main__":
-    # arg_parser = argparse.ArgumentParser()
-    # arg_parser.add_argument("input", help="Input CSV file path")
-    # args = arg_parser.parse_args()
-    #
-    # main(args.input)
-    main('../k6/out/stg-cloud-be-load.csv')
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("input", help="Input CSV file path")
+    args = arg_parser.parse_args()
+
+    main(args.input)
+    # main('../k6/out/stg-cloud-be-load.csv')
