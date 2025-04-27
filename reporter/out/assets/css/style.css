@@ -27,11 +27,12 @@ h3 {
 }
 
 .card {
-    flex: 1 1 300px;
+    flex: 1;
     background: #f9f9f9;
     padding: 1rem;
     border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px rgba(0,0,0,0.4);
+    min-width: 260px; /* 추가: 카드 최소 폭 줄이기 */
 }
 
 .card-full {
@@ -43,6 +44,7 @@ h3 {
 }
 
 .card-title {
+    text-align: center;
     background: #e0e0e0;
     padding: 0.5rem 1rem;
     font-weight: bold;
@@ -57,14 +59,18 @@ table {
 }
 
 th, td {
-    padding: 0.5rem;
-    border-bottom: 1px solid #ccc;
+    padding: 0.3rem 0.5rem;
     font-size: 0.85rem;
 }
 
 th {
     background-color: #f0f0f0;
     text-align: center;
+    width: 40%;
+}
+
+td {
+    text-align: right;
 }
 
 td:first-child {

@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from functools import reduce
 from typing import List
+from utils import format_duration, format_bytes
 
 def calculate_counts_summary(df: pd.DataFrame, metric_name: str, duration_sec: int) -> dict:
     """
@@ -31,7 +32,7 @@ def calculate_durations_summary(df: pd.DataFrame, metric: str) -> dict:
         return {}
 
     values = df_filtered["metric_value"]
-    return {
+    result = {
         "avg": values.mean(),
         "min": values.min(),
         "max": values.max(),
@@ -40,27 +41,28 @@ def calculate_durations_summary(df: pd.DataFrame, metric: str) -> dict:
         "p95": np.percentile(values, 95),
         "p99": np.percentile(values, 99),
     }
+    result = {k: format_duration(v) for k, v in result.items()}
+    return result
 
 
 def calculate_total_transfer_summary(df: pd.DataFrame, duration_sec: int) -> dict:
     """
     data_sent, data_received 총량과 초당 전송량 요약을 dict 로 반환
     """
-    total_received = df[df["metric_name"] == "data_received"]["metric_value"].sum()
-    total_sent = df[df["metric_name"] == "data_sent"]["metric_value"].sum()
+    if df.empty:
+        return {}
 
-    received_per_sec = total_received / duration_sec if duration_sec > 0 else 0
-    sent_per_sec = total_sent / duration_sec if duration_sec > 0 else 0
+    data_received_total = df[df["metric_name"] == "data_received"]["metric_value"].sum()
+    data_sent_total = df[df["metric_name"] == "data_sent"]["metric_value"].sum()
+
+    data_received_per_sec = data_received_total / duration_sec if duration_sec else 0
+    data_sent_per_sec = data_sent_total / duration_sec if duration_sec else 0
 
     return {
-        "data_received": {
-            "total": total_received,
-            "per_sec": received_per_sec,
-        },
-        "data_sent": {
-            "total": total_sent,
-            "per_sec": sent_per_sec,
-        }
+        "data_received_total": format_bytes(data_received_total),
+        "data_received_per_sec": f"{format_bytes(data_received_per_sec)}/s",
+        "data_sent_total": format_bytes(data_sent_total),
+        "data_sent_per_sec": f"{format_bytes(data_sent_per_sec)}/s",
     }
 
 

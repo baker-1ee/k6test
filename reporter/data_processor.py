@@ -23,12 +23,14 @@ def process_data(df):
         "failed_reqs": http_req_failed.get("failures", 0),
         "success_reqs": http_req_failed.get("successes", 0),
         "success_rate": http_req_failed.get("success_rate", 0),
-        "errors": http_req_failed.get("errors", "-"),
         "iterations": iterations.get("total", 0),
         "iterations/sec": iterations.get("tps", 0),
         "vus_min": int(vus_min) if not pd.isna(vus_min) else 0,
         "vus_max": int(vus_max) if not pd.isna(vus_max) else 0,
     }
+
+    # HTTP Request Error 요약
+    summary_http_errors = http_req_failed.get("errors", "-")
 
     # HTTP Request Duration 요약
     summary_http_req_duration = analyzer.calculate_durations_summary(df, 'http_req_duration')
@@ -58,6 +60,7 @@ def process_data(df):
         "summary_http_req_duration": summary_http_req_duration,
         "summary_iteration_duration": summary_iteration_duration,
         "summary_network_usage": summary_network_usage,
+        "summary_http_errors": summary_http_errors,
         "chart_vus_timeseries": chart_vus_timeseries,
         "chart_latency_timeseries": chart_latency_timeseries,
         "detail_table": detail_latency_table,

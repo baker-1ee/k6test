@@ -1,12 +1,16 @@
 import pandas as pd
-from utils import format_test_duration_title
+from utils import format_test_duration_title, format_card_value
 
 def generate_card(title, data: dict, icon="📊") -> str:
     """
     카드 하나를 HTML 로 변환
+    Args:
+        title: 카드 제목
+        data: 표시할 dict 데이터
+        icon: 카드에 붙일 이모지 아이콘
     """
     rows = ''.join(
-        f'<tr><td><b>{key}</b></td><td>{value}</td></tr>'
+        f'<tr><td style="text-align:left;"><b>{key}</b></td><td style="text-align:right;">{value}</td></tr>'
         for key, value in data.items()
     )
 
@@ -14,6 +18,23 @@ def generate_card(title, data: dict, icon="📊") -> str:
     <div class="card">
         <div class="card-title">{icon} {title}</div>
         <table>{rows}</table>
+    </div>
+    """
+
+def generate_error_card(errors_text: str) -> str:
+    """
+    errors_text 를 받아서 에러 카드 HTML 을 반환
+    만약 errors_text 가 "-" 이면 빈 문자열("") 반환
+    """
+    if not errors_text or errors_text == "-":
+        return ""
+
+    return f"""
+    <div class="section-gap">
+        <div class="card-full">
+            <div class="card-title">❗ 에러 요약</div>
+            <div style="padding: 1rem; white-space: pre-wrap;">{errors_text}</div>
+        </div>
     </div>
     """
 
@@ -213,6 +234,7 @@ def generate_report(output_path, data: dict):
     card_http_req_duration = generate_card("HTTP 요청 Duration (ms)", data["summary_http_req_duration"], icon="🕐")
     card_iteration_duration = generate_card("Iteration Duration (ms)", data["summary_iteration_duration"], icon="🕐")
     card_network_usage = generate_card("네트워크 사용량", data["summary_network_usage"], icon="📡")
+    card_errors_html = generate_error_card(data["summary_http_errors"])
 
     # 시계열 차트 준비
     chart_vus = generate_chartjs_vus_chart(data["chart_vus_timeseries"])
@@ -242,6 +264,8 @@ def generate_report(output_path, data: dict):
             {card_iteration_duration}
             {card_network_usage}
         </div>
+        
+            {card_errors_html}
 
         <div class="section-gap">
             {chart_vus}
