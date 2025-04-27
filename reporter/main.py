@@ -1,8 +1,7 @@
-import argparse
 from pathlib import Path
 from datetime import datetime
 
-import utils, parser, data_processor, analyzer, html_writer, csv_writer
+import parser, data_processor, html_writer
 
 
 def generate_timestamp():

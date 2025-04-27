@@ -1,135 +1,266 @@
-from typing import Union
-from pathlib import Path
-
 import pandas as pd
-
-from report_builder import generate_html_report
 from utils import format_test_duration_title
 
-def _get_value(df: pd.DataFrame, key: str, default="0") -> str:
+def generate_card(title, data: dict, icon="📊") -> str:
     """
-    숫자 값을 콤마가 포함된 문자열 로 반환 (UI 출력용)
+    카드 하나를 HTML 로 변환
     """
-    if key in df.columns:
-        try:
-            return f"{int(df.iloc[0][key]):,}"
-        except (ValueError, TypeError):
-            return default
-    return default
-
-
-def _get_raw_value(df: pd.DataFrame, key: str, default=0.0) -> float:
-    """
-    숫자 값을 그대로 float 으로 반환 (계산용)
-    """
-    if key in df.columns:
-        try:
-            return float(df.iloc[0][key])
-        except (ValueError, TypeError):
-            return default
-    return default
-
-def _tps(df, duration):
-    try:
-        count = int(df["http_reqs_count"].iloc[0])
-        return f"{round(count / duration, 2):,}/s"
-    except:
-        return "N/A"
-
-def _success_count(df):
-    try:
-        total = int(df["http_reqs_count"].iloc[0])
-        failed = int(df["http_req_failed_failures"].iloc[0])
-        return f"{total - failed:,}"
-    except:
-        return "N/A"
-
-def _success_rate(df):
-    try:
-        total = int(df["http_reqs_count"].iloc[0])
-        failed = int(df["http_req_failed_failures"].iloc[0])
-        rate = ((total - failed) / total) * 100
-        return f"{rate:.1f}%"
-    except:
-        return "N/A"
-
-def _iters_per_sec(df, duration):
-    try:
-        count = int(df["iterations_count"].iloc[0])
-        return f"{round(count / duration, 2)}/s"
-    except:
-        return "N/A"
-
-def _extract_metric_stats(df: pd.DataFrame, metric: str) -> dict:
-    keys = ["avg", "min", "max", "p50", "p90", "p95", "p99"]
-    result = {}
-    for key in keys:
-        col = f"{metric}_{key}"
-        if col in df.columns:
-            result[key] = int(df.iloc[0][col])
-    return result
-
-
-def generate_report(output_path: Union[str, Path], processed: dict):
-    """
-    기존 generate_html_report() 호출을 위한 변환 함수
-    """
-    test_duration = processed["test_duration"]
-    df_total = processed["df_total"]
-    df_detail = processed["df_detail"]
-
-    # 1. 제목 포맷팅
-    report_title = format_test_duration_title(test_duration)
-
-    # 2. HTTP Summary 추출
-    sum_http = {
-        "total_reqs": _get_value(df_total, "http_reqs_count"),
-        "tps": _tps(df_total, test_duration["seconds"]),
-        "failed_reqs": _get_value(df_total, "http_req_failed_failures"),
-        "success_reqs": _success_count(df_total),
-        "success_rate": _success_rate(df_total),
-        "iterations": _get_value(df_total, "iterations_count"),
-        "iterations/sec": _iters_per_sec(df_total, test_duration["seconds"]),
-        "vus_min": _get_value(df_total, "vus_min"),
-        "vus_max": _get_value(df_total, "vus_max"),
-    }
-
-    # 3. Duration Stats
-    stats = {
-        "http_req_duration": _extract_metric_stats(df_total, "http_req_duration"),
-        "iteration_duration": _extract_metric_stats(df_total, "iteration_duration"),
-    }
-
-    # 4. Network Summary
-    data_received = float(_get_raw_value(df_total, "data_received_total", '0'))
-    data_sent = float(_get_raw_value(df_total, "data_sent_total", '0'))
-    duration = test_duration["seconds"]
-    from utils import format_bytes
-
-    network_summary = {
-        "data_received": f"{format_bytes(data_received)}  {format_bytes(data_received / duration)}/s",
-        "data_sent": f"{format_bytes(data_sent)}  {format_bytes(data_sent / duration)}/s",
-    }
-
-    # 5. Check Summary = df_detail + ratio
-    df_checks = df_detail.copy()
-    if "failures" in df_checks.columns and "http_reqs_count" in df_total.columns:
-        df_checks["total"] = df_checks.get("failures", 0) + _get_value(df_total, "http_reqs_count", 0)
-        df_checks["ok"] = df_checks["total"] - df_checks.get("failures", 0)
-        from utils import format_ratio
-        df_checks["ratio"] = df_checks.apply(lambda row: format_ratio(row.get("ok", 0), row.get("total", 0)), axis=1)
-
-    html = generate_html_report(
-        report_title=report_title,
-        sum_http=sum_http,
-        stats=stats,
-        network_summary=network_summary,
-        check_summary=df_checks,
-        df_req_duration=df_detail,
-        duration_secs=duration,
-        df_vus=pd.DataFrame()  # optional
+    rows = ''.join(
+        f'<tr><td><b>{key}</b></td><td>{value}</td></tr>'
+        for key, value in data.items()
     )
 
-    from pathlib import Path
-    Path(output_path).write_text(html, encoding="utf-8")
-    print(f"[DONE] Report saved: {output_path}")
+    return f"""
+    <div class="card">
+        <div class="card-title">{icon} {title}</div>
+        <table>{rows}</table>
+    </div>
+    """
+
+def generate_detail_table(df, title="상세 테이블") -> str:
+    """
+    DataFrame 을 HTML 테이블 로 변환
+    """
+    if df.empty:
+        return f"<div class='card-full'><div class='card-title'>{title}</div><p>데이터 없음</p></div>"
+
+    headers = ''.join(f"<th>{col}</th>" for col in df.columns)
+    rows = ''
+    for _, row in df.iterrows():
+        row_html = ''.join(f"<td>{row[col]}</td>" for col in df.columns)
+        rows += f"<tr>{row_html}</tr>"
+
+    return f"""
+    <div class="card-full">
+        <div class="card-title">{title}</div>
+        <table>
+            <thead><tr>{headers}</tr></thead>
+            <tbody>{rows}</tbody>
+        </table>
+    </div>
+    """
+
+def generate_chartjs_vus_chart(df_vus_timeseries: pd.DataFrame) -> str:
+    """
+    Chart.js를 이용 해서 VU(Virtual Users) 시계열 그래프 HTML 코드 생성
+    Args:
+        df_vus_timeseries: 'timestamp', 'vus' 컬럼을 가진 DataFrame
+    Returns:
+        VU 시계열 Chart.js HTML 코드
+    """
+    if df_vus_timeseries.empty:
+        return "<p>VU 데이터가 없습니다.</p>"
+
+    labels = df_vus_timeseries["timestamp"].dt.strftime("%H:%M:%S").tolist()
+    vus_data = df_vus_timeseries["vus"].astype(int).tolist()
+
+    chart_js = f"""
+    <div class="card-full">
+        <div class="card-title">👥 가상 사용자(VU) 시계열</div>
+        <canvas id="vusChart" height="60"></canvas>
+    </div>
+    <script>
+    const vusCtx = document.getElementById('vusChart').getContext('2d');
+    new Chart(vusCtx, {{
+        type: 'line',
+        data: {{
+            labels: {labels},
+            datasets: [{{
+                label: 'VUs',
+                data: {vus_data},
+                borderColor: 'rgba(255, 159, 64, 0.8)',
+                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                fill: false,
+                tension: 0.1,
+                pointRadius: 2
+            }}]
+        }},
+        options: {{
+            responsive: true,
+            plugins: {{
+                title: {{
+                    display: true,
+                    text: 'VU(가상 사용자) 시계열'
+                }},
+                legend: {{
+                    display: false
+                }}
+            }},
+            scales: {{
+                x: {{
+                    title: {{
+                        display: true,
+                        text: '시간'
+                    }}
+                }},
+                y: {{
+                    title: {{
+                        display: true,
+                        text: '사용자 수'
+                    }},
+                    beginAtZero: true,
+                    ticks: {{
+                        precision: 0
+                    }}
+                }}
+            }}
+        }}
+    }});
+    </script>
+    """
+
+    return chart_js
+
+
+def generate_chartjs_latency_chart(df_latency_timeseries: pd.DataFrame) -> str:
+    """
+    Chart.js를 이용 해서 HTTP Request Latency 시계열 그래프 HTML 코드 생성
+    Args:
+        df_latency_timeseries: 'timestamp', 'avg', 'min', 'max', 'p50', 'p90', 'p95', 'p99' 컬럼을 가진 DataFrame
+    Returns:
+        HTTP 요청 지연 시계열 Chart.js HTML 코드
+    """
+    if df_latency_timeseries.empty:
+        return "<p>Latency 데이터가 없습니다.</p>"
+
+    labels = df_latency_timeseries["timestamp"].dt.strftime("%H:%M:%S").tolist()
+
+    colors = {
+        "avg": "rgba(0, 200, 83, 0.6)",        # 초록 (평균)
+        "min": "rgba(255, 235, 59, 0.6)",      # 노랑 (최소)
+        "max": "rgba(244, 67, 54, 0.6)",       # 빨강 (최대)
+        "p50": "rgba(100, 181, 246, 0.4)",     # 연한 파랑 (50 퍼센타일)
+        "p90": "rgba(66, 165, 245, 0.5)",      # 중간 파랑 (90 퍼센타일)
+        "p95": "rgba(30, 136, 229, 0.6)",      # 진한 파랑 (95 퍼센타일)
+        "p99": "rgba(21, 101, 192, 0.7)"       # 아주 진한 파랑 (99 퍼센타일)
+    }
+
+    datasets = []
+    for col, color in colors.items():
+        if col in df_latency_timeseries.columns:
+            datasets.append(f"""
+            {{
+                label: '{col}',
+                data: {df_latency_timeseries[col].astype(int).tolist()},
+                borderColor: '{color}',
+                backgroundColor: '{color}',
+                fill: false,
+                tension: 0.1,
+                pointRadius: 2
+            }}
+            """)
+
+    chart_js = f"""
+    <div class="card-full">
+        <div class="card-title">📈 HTTP 요청 지연 시계열</div>
+        <canvas id="latencyChart" height="100"></canvas>
+    </div>
+    <script>
+    const latencyCtx = document.getElementById('latencyChart').getContext('2d');
+    new Chart(latencyCtx, {{
+        type: 'line',
+        data: {{
+            labels: {labels},
+            datasets: [{','.join(datasets)}]
+        }},
+        options: {{
+            responsive: true,
+            interaction: {{
+                mode: 'index',
+                intersect: false
+            }},
+            plugins: {{
+                title: {{
+                    display: true,
+                    text: 'HTTP 요청 지연 시계열'
+                }},
+                legend: {{
+                    position: 'top'
+                }}
+            }},
+            scales: {{
+                x: {{
+                    title: {{
+                        display: true,
+                        text: '시간'
+                    }}
+                }},
+                y: {{
+                    title: {{
+                        display: true,
+                        text: '지연 시간 (ms)'
+                    }}
+                }}
+            }}
+        }}
+    }});
+    </script>
+    """
+
+    return chart_js
+
+
+def generate_report(output_path, data: dict):
+    """
+    최종 HTML Report 생성
+    Args:
+        output_path: 저장할 HTML 파일 경로
+        data: process_data()의 결과 dict
+    """
+
+    # 카드별 로 준비
+    card_http_summary = generate_card("HTTP 요청 요약", data["summary_http_request"], icon="📊")
+    card_http_req_duration = generate_card("HTTP 요청 Duration (ms)", data["summary_http_req_duration"], icon="🕐")
+    card_iteration_duration = generate_card("Iteration Duration (ms)", data["summary_iteration_duration"], icon="🕐")
+    card_network_usage = generate_card("네트워크 사용량", data["summary_network_usage"], icon="📡")
+
+    # 시계열 차트 준비
+    chart_vus = generate_chartjs_vus_chart(data["chart_vus_timeseries"])
+    chart_latency = generate_chartjs_latency_chart(data["chart_latency_timeseries"])
+
+    # 디테일 테이블 준비
+    detail_latency_table_html = generate_detail_table(data["detail_table"], title="📈 URL 별 지연 시간 요약")
+    detail_check_table_html = generate_detail_table(data["detail_check_table"], title="✅ Check 결과 요약")
+
+    # 최종 HTML 조합
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <title>K6 성능 테스트 리포트</title>
+        <script src="assets/js/chart.min.js"></script>
+        <link rel="stylesheet" href="assets/css/style.css">
+    </head>
+    <body>
+        <h1>K6 Performance Test Report</h1>
+        <h3>{format_test_duration_title(data["test_duration"])}</h3>
+        
+        <div class="container">
+            {card_http_summary}
+            {card_http_req_duration}
+            {card_iteration_duration}
+            {card_network_usage}
+        </div>
+
+        <div class="section-gap">
+            {chart_vus}
+        </div>
+
+        <div class="section-gap">
+            {chart_latency}
+        </div>
+
+        <div class="section-gap">
+            {detail_latency_table_html}
+        </div>
+
+        <div class="section-gap">
+            {detail_check_table_html}
+        </div>
+    </body>
+    </html>
+    """
+
+    output_path.write_text(html_content, encoding="utf-8")
+    print(f"[DONE] HTML 리포트 생성 완료: {output_path}")

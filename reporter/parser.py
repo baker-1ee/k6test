@@ -23,7 +23,7 @@ def load_csv(path: Union[str, Path]) -> pd.DataFrame:
 
     # 필요한 열만 남기기
     keep_columns = [
-        "metric_name",      # 어떤 메트릭인지 (http_req_duration 등)
+        "metric_name",      # 어떤 메트릭 인지 (http_req_duration 등)
         "timestamp",        # 시분초
         "metric_value",     # 수치값
         "check",            # checks 이름
