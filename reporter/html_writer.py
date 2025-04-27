@@ -70,41 +70,39 @@ def _extract_metric_stats(df: pd.DataFrame, metric: str) -> dict:
     return result
 
 
-def generate_report(
-        output_path: Union[str, Path],
-        test_duration: dict,
-        summary_df: pd.DataFrame,
-        summary_by_url: pd.DataFrame
-):
+def generate_report(output_path: Union[str, Path], processed: dict):
     """
     기존 generate_html_report() 호출을 위한 변환 함수
     """
+    test_duration = processed["test_duration"]
+    df_total = processed["df_total"]
+    df_detail = processed["df_detail"]
 
     # 1. 제목 포맷팅
     report_title = format_test_duration_title(test_duration)
 
     # 2. HTTP Summary 추출
     sum_http = {
-        "total_reqs": _get_value(summary_df, "http_reqs_count"),
-        "tps": _tps(summary_df, test_duration["seconds"]),
-        "failed_reqs": _get_value(summary_df, "http_req_failed_failures"),
-        "success_reqs": _success_count(summary_df),
-        "success_rate": _success_rate(summary_df),
-        "iterations": _get_value(summary_df, "iterations_count"),
-        "iterations/sec": _iters_per_sec(summary_df, test_duration["seconds"]),
-        "vus_min": _get_value(summary_df, "vus_min"),
-        "vus_max": _get_value(summary_df, "vus_max"),
+        "total_reqs": _get_value(df_total, "http_reqs_count"),
+        "tps": _tps(df_total, test_duration["seconds"]),
+        "failed_reqs": _get_value(df_total, "http_req_failed_failures"),
+        "success_reqs": _success_count(df_total),
+        "success_rate": _success_rate(df_total),
+        "iterations": _get_value(df_total, "iterations_count"),
+        "iterations/sec": _iters_per_sec(df_total, test_duration["seconds"]),
+        "vus_min": _get_value(df_total, "vus_min"),
+        "vus_max": _get_value(df_total, "vus_max"),
     }
 
     # 3. Duration Stats
     stats = {
-        "http_req_duration": _extract_metric_stats(summary_df, "http_req_duration"),
-        "iteration_duration": _extract_metric_stats(summary_df, "iteration_duration"),
+        "http_req_duration": _extract_metric_stats(df_total, "http_req_duration"),
+        "iteration_duration": _extract_metric_stats(df_total, "iteration_duration"),
     }
 
     # 4. Network Summary
-    data_received = float(_get_raw_value(summary_df, "data_received_total", '0'))
-    data_sent = float(_get_raw_value(summary_df, "data_sent_total", '0'))
+    data_received = float(_get_raw_value(df_total, "data_received_total", '0'))
+    data_sent = float(_get_raw_value(df_total, "data_sent_total", '0'))
     duration = test_duration["seconds"]
     from utils import format_bytes
 
@@ -113,10 +111,10 @@ def generate_report(
         "data_sent": f"{format_bytes(data_sent)}  {format_bytes(data_sent / duration)}/s",
     }
 
-    # 5. Check Summary = summary_by_url + ratio
-    df_checks = summary_by_url.copy()
-    if "failures" in df_checks.columns and "http_reqs_count" in summary_df.columns:
-        df_checks["total"] = df_checks.get("failures", 0) + _get_value(summary_df, "http_reqs_count", 0)
+    # 5. Check Summary = df_detail + ratio
+    df_checks = df_detail.copy()
+    if "failures" in df_checks.columns and "http_reqs_count" in df_total.columns:
+        df_checks["total"] = df_checks.get("failures", 0) + _get_value(df_total, "http_reqs_count", 0)
         df_checks["ok"] = df_checks["total"] - df_checks.get("failures", 0)
         from utils import format_ratio
         df_checks["ratio"] = df_checks.apply(lambda row: format_ratio(row.get("ok", 0), row.get("total", 0)), axis=1)
@@ -127,7 +125,7 @@ def generate_report(
         stats=stats,
         network_summary=network_summary,
         check_summary=df_checks,
-        df_req_duration=summary_by_url,
+        df_req_duration=df_detail,
         duration_secs=duration,
         df_vus=pd.DataFrame()  # optional
     )

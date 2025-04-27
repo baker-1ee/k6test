@@ -3,6 +3,22 @@ import numpy as np
 from functools import reduce
 from typing import List
 
+def calculate_counts_summary(df: pd.DataFrame, metric_name: str, duration_sec: int) -> dict:
+    """
+    특정 metric_name 에 대해 총 건수(total)와 TPS 를 계산
+    """
+    filtered = df[df["metric_name"] == metric_name]
+
+    if filtered.empty or duration_sec <= 0:
+        return {"total": 0, "tps": 0}
+
+    total_count = len(filtered)
+    tps = round(total_count / duration_sec, 2)
+
+    return {
+        "total": total_count,
+        "tps": tps
+    }
 
 def calculate_durations_summary(df: pd.DataFrame, metric: str) -> pd.DataFrame:
     """
@@ -60,17 +76,32 @@ def calculate_durations(df: pd.DataFrame, metric: str) -> pd.DataFrame:
     return result
 
 
-def calculate_failures_summary(df: pd.DataFrame) -> pd.DataFrame:
+def calculate_failures_summary(df: pd.DataFrame) -> dict:
     """
-    http_req_failed 가 1인 요청 전체에 대해 실패 횟수 및 에러 요약 문자열 생성
+    http_req_failed 메트릭 기준 으로
+    실패 수(failures), 성공 수(successes), 성공률(success_rate), 에러 요약(errors) 계산 하여 dict 로 반환
     """
     failed_df = df[df["metric_name"] == "http_req_failed"]
 
     if failed_df.empty:
-        return pd.DataFrame(columns=["metric", "failures", "errors"])
+        return {
+            "failures": 0,
+            "successes": 0,
+            "success_rate": 0.0,
+            "errors": "-"
+        }
 
-    # 전체 실패 수 합계
-    total_failures = int(failed_df["metric_value"].sum())
+    # 실패 건수 (metric_value == 1 인 행 수)
+    failures = int(failed_df["metric_value"].sum())
+
+    # 전체 요청 수 (http_req_failed 행 전체 개수)
+    total = len(failed_df)
+
+    # 성공 건수
+    successes = total - failures
+
+    # 성공률
+    success_rate = round((successes / total) * 100, 2) if total > 0 else 0.0
 
     # 전체 error 종류별 count
     error_summary_df = (
@@ -83,11 +114,12 @@ def calculate_failures_summary(df: pd.DataFrame) -> pd.DataFrame:
     # 에러 문자열 조합
     error_summary = ", ".join(f"{row['error']}({row['count']})" for _, row in error_summary_df.iterrows())
 
-    return pd.DataFrame([{
-        "metric": "http_req_failed",
-        "failures": total_failures,
+    return {
+        "failures": failures,
+        "successes": successes,
+        "success_rate": success_rate,
         "errors": error_summary if error_summary else "-"
-    }])
+    }
 
 
 def calculate_failures(df: pd.DataFrame) -> pd.DataFrame:
