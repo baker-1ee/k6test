@@ -44,18 +44,21 @@ def generate_detail_table(df, title="상세 테이블") -> str:
 
     headers = ''.join(f"<th>{col}</th>" for col in df.columns)
     rows = ''
-    for _, row in df.iterrows():
-        ratio = float(row.get("ratio", 100))  # ratio 컬럼 없을 수도 있으니까 기본값 100
 
-        if ratio == 100:
-            color = "green"
+    for _, row in df.iterrows():
+        ratio = float(row.get("ratio", 100))
+        color = "green"
+        if ratio < 75:
+            color = "red"
         elif ratio < 100:
             color = "orangered"
-        elif ratio <= 75:
-            color = "darkred"
 
-        # <tr style> 에 색상 적용
-        row_html = ''.join(f"<td>{row[col]}</td>" for col in df.columns)
+        row_html = ''
+        for col in df.columns:
+            # url, check, errors 컬럼은 왼쪽 정렬
+            align_class = "left" if col in ["url", "check", "errors"] else "right"
+            row_html += f'<td class="{align_class}">{row[col]}</td>'
+
         rows += f'<tr style="color: {color};">{row_html}</tr>'
 
     return f"""

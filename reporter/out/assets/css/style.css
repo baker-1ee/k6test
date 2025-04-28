@@ -35,11 +35,11 @@ h3 {
 
 .card {
     flex: 1;
-    min-width: 260px; /* 카드 최소 폭 설정 */
+    min-width: 260px;
 }
 
 .card-full {
-    overflow-x: auto; /* 긴 테이블 스크롤 허용 */
+    overflow-x: auto;
 }
 
 .card-title {
@@ -58,20 +58,31 @@ table {
 }
 
 th, td {
-    padding: 4px 8px;
-    white-space: nowrap; /* 내용 줄바꿈 없이 */
+    padding: 8px 12px; /* <-- 행 간격 살짝 넓힘 */
+    white-space: nowrap; /* 줄바꿈 없음 기본 */
 }
 
+/* 헤더 */
 th {
     background-color: #f0f0f0;
     text-align: center;
+    border-bottom: 2px solid #ddd; /* 헤더 밑에 진한 가로줄 */
 }
 
+/* 셀 */
 td {
-    text-align: right;
+    text-align: right; /* 기본 숫자 우측정렬 */
+    border-bottom: 1px solid #eee; /* 옅은 가로줄만 추가 */
 }
 
-/* 첫 번째 열만 왼쪽 정렬 (ex: url, check) */
-th:first-child, td:first-child {
+/* 왼쪽 정렬할 칸들 (url, check, errors) */
+td.left {
     text-align: left;
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* 오른쪽 정렬할 칸들 */
+td.right {
+    text-align: right;
 }

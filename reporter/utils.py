@@ -50,7 +50,7 @@ def format_bytes(value: float) -> str:
         value = float(value)
     except (ValueError, TypeError):
         return "N/A"
-    units = [("MB", 1024 ** 2), ("KB", 1024), ("B", 1)]
+    units = [("GB", 1024 ** 3), ("MB", 1024 ** 2), ("KB", 1024), ("B", 1)]
     for unit, factor in units:
         if value >= factor:
             return f"{value / factor:,.1f} {unit}"
