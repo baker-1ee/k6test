@@ -13,18 +13,15 @@ def process_data(df):
     # HTTP 요청 요약
     http_reqs = analyzer.calculate_counts_summary(df, 'http_reqs', test_duration["seconds"])
     http_req_failed = analyzer.calculate_failures_summary(df)
-    iterations = analyzer.calculate_counts_summary(df, 'iterations', test_duration["seconds"])
     vus_min = df[df["metric_name"] == "vus"]["metric_value"].min()
     vus_max = df[df["metric_name"] == "vus"]["metric_value"].max()
 
     summary_http_request = {
         "total_reqs": http_reqs.get("total", 0),
-        "tps": http_reqs.get("tps", 0),
+        "tps": round(http_req_failed.get("successes", 0) / test_duration["seconds"], 2),
         "failed_reqs": http_req_failed.get("failures", 0),
         "success_reqs": http_req_failed.get("successes", 0),
         "success_rate": http_req_failed.get("success_rate", 0),
-        "iterations": iterations.get("total", 0),
-        "iterations/sec": iterations.get("tps", 0),
         "vus_min": int(vus_min) if not pd.isna(vus_min) else 0,
         "vus_max": int(vus_max) if not pd.isna(vus_max) else 0,
     }
@@ -46,6 +43,9 @@ def process_data(df):
     interval_sec = utils.determine_interval_seconds(test_duration["seconds"])
     chart_vus_timeseries = analyzer.generate_time_binned_vus_summary(df, interval_sec)
 
+    # TPS 시계열 데이터
+    chart_tps_timeseries = analyzer.generate_time_binned_tps(df, interval_sec)
+
     # HTTP Request Latency 시계열 데이터
     chart_latency_timeseries = analyzer.generate_time_binned_latency_summary(df, interval_sec)
 
@@ -63,6 +63,7 @@ def process_data(df):
         "summary_network_usage": summary_network_usage,
         "summary_http_errors": summary_http_errors,
         "chart_vus_timeseries": chart_vus_timeseries,
+        "chart_tps_timeseries": chart_tps_timeseries,
         "chart_latency_timeseries": chart_latency_timeseries,
         "detail_table": detail_latency_table,
         "detail_check_table": detail_check_table

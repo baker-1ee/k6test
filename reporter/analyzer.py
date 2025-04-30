@@ -1,24 +1,19 @@
 import pandas as pd
 import numpy as np
 from functools import reduce
-from typing import List
 from utils import format_duration, format_bytes, format_ratio
 
 def calculate_counts_summary(df: pd.DataFrame, metric_name: str, duration_sec: int) -> dict:
     """
-    특정 metric_name 에 대해 총 건수(total)와 TPS 를 계산
+    특정 metric_name 에 대해 총 건수(total)를 계산
     """
     filtered = df[df["metric_name"] == metric_name]
 
-    if filtered.empty or duration_sec <= 0:
-        return {"total": 0, "tps": 0}
-
-    total_count = len(filtered)
-    tps = round(total_count / duration_sec, 2)
+    if filtered.empty:
+        return {"total": 0}
 
     return {
-        "total": total_count,
-        "tps": tps
+        "total": len(filtered)
     }
 
 def calculate_durations_summary(df: pd.DataFrame, metric: str) -> dict:
@@ -82,6 +77,35 @@ def generate_time_binned_vus_summary(df: pd.DataFrame, interval_sec: int = 5) ->
         .first()[["bucket", "metric_value"]]
         .rename(columns={"bucket": "timestamp", "metric_value": "vus"})
     )
+
+
+def generate_time_binned_tps(df: pd.DataFrame, interval_sec: int = 10) -> pd.DataFrame:
+    """
+    interval_sec 간격 으로 성공 TPS(Time per Second) 시계열 데이터 생성
+    """
+    if df.empty:
+        return pd.DataFrame(columns=["timestamp", "tps"])
+
+    # 필요한 메트릭 만 추출
+    reqs = df[df["metric_name"] == "http_reqs"].copy()
+    fails = df[(df["metric_name"] == "http_req_failed") & (df["metric_value"] == 1)].copy()
+
+    # 시간 구간 정리
+    reqs["interval"] = reqs["timestamp"].dt.floor(f"{interval_sec}s")
+    fails["interval"] = fails["timestamp"].dt.floor(f"{interval_sec}s")
+
+    # 각 구간별 요청 수
+    req_counts = reqs.groupby("interval").size().reset_index(name="req_count")
+    fail_counts = fails.groupby("interval").size().reset_index(name="fail_count")
+
+    # 성공 TPS 계산
+    merged = pd.merge(req_counts, fail_counts, on="interval", how="left")
+    merged["fail_count"] = merged["fail_count"].fillna(0).astype(int)
+    merged["success_count"] = merged["req_count"] - merged["fail_count"]
+    merged["tps"] = (merged["success_count"] / interval_sec).round(2)
+    merged = merged.rename(columns={"interval": "timestamp"})
+
+    return merged[["timestamp", "tps"]]
 
 
 def generate_time_binned_latency_summary(df: pd.DataFrame, interval_sec: int = 5) -> pd.DataFrame:

@@ -143,6 +143,73 @@ def generate_chartjs_vus_chart(df_vus_timeseries: pd.DataFrame) -> str:
     return chart_js
 
 
+def generate_chartjs_tps_chart(df_tps_timeseries: pd.DataFrame) -> str:
+    """
+    Chart.js를 이용한 TPS 시계열 그래프 생성
+    """
+    if df_tps_timeseries.empty:
+        return "<p>TPS 데이터가 없습니다.</p>"
+
+    labels = df_tps_timeseries["timestamp"].dt.strftime("%H:%M:%S").tolist()
+    tps_data = df_tps_timeseries["tps"].tolist()
+
+    chart_js = f"""
+    <div class="card-full">
+        <div class="card-title">🚀 성공 TPS 시계열</div>
+        <canvas id="tpsChart" height="60"></canvas>
+    </div>
+    <script>
+    const tpsCtx = document.getElementById('tpsChart').getContext('2d');
+    new Chart(tpsCtx, {{
+        type: 'line',
+        data: {{
+            labels: {labels},
+            datasets: [{{
+                label: 'TPS (성공 요청 수 / sec)',
+                data: {tps_data},
+                borderColor: 'rgba(0, 123, 255, 0.9)',
+                backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                fill: false,
+                tension: 0.1,
+                pointRadius: 2
+            }}]
+        }},
+        options: {{
+            responsive: true,
+            plugins: {{
+                title: {{
+                    display: true,
+                    text: 'TPS (Transactions Per Second) 시계열'
+                }},
+                legend: {{
+                    display: false
+                }}
+            }},
+            scales: {{
+                x: {{
+                    title: {{
+                        display: true,
+                        text: '시간'
+                    }}
+                }},
+                y: {{
+                    title: {{
+                        display: true,
+                        text: 'TPS'
+                    }},
+                    beginAtZero: true,
+                    ticks: {{
+                        precision: 0
+                    }}
+                }}
+            }}
+        }}
+    }});
+    </script>
+    """
+    return chart_js
+
+
 def generate_chartjs_latency_chart(df_latency_timeseries: pd.DataFrame) -> str:
     """
     Chart.js를 이용 해서 HTTP Request Latency 시계열 그래프 HTML 코드 생성
@@ -248,6 +315,7 @@ def generate_report(output_path, data: dict):
 
     # 시계열 차트 준비
     chart_vus = generate_chartjs_vus_chart(data["chart_vus_timeseries"])
+    chart_tps = generate_chartjs_tps_chart(data["chart_tps_timeseries"])
     chart_latency = generate_chartjs_latency_chart(data["chart_latency_timeseries"])
 
     # 디테일 테이블 준비
@@ -279,6 +347,10 @@ def generate_report(output_path, data: dict):
 
         <div class="section-gap">
             {chart_vus}
+        </div>
+
+        <div class="section-gap">
+            {chart_tps}
         </div>
 
         <div class="section-gap">
