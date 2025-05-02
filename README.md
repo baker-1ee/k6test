@@ -23,7 +23,4 @@ k6 부하 테스트 결과 CSV 파일을 입력받아,
 - Console에는 주요 요약만 깔끔하게 출력됩니다.
 
 ## 예시
-![img.png](img.png)
-![img_1.png](img_1.png)
-![img_2.png](img_2.png)
-![img_3.png](img_3.png)
+![img_2.png](images/preview.png)

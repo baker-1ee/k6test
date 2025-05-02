@@ -329,7 +329,7 @@ def generate_report(output_path, data: dict):
     <head>
         <meta charset="UTF-8">
         <title>K6 성능 테스트 리포트</title>
-        <script src="assets/js/chart.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <link rel="stylesheet" href="assets/css/style.css">
     </head>
     <body>
